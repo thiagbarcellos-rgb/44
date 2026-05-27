@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ML × MP — Conciliação</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+:root{--bg:#05070b;--surf:#090e18;--card:#0d1520;--cardhi:#111c2a;--bord:#162030;--y:#f5c300;--g:#00d474;--r:#f03050;--o:#f07820;--b:#3090f0;--p:#9060f0;--t:#00b8a0;--w:#c0d8f0;--s:#4a6880;--m:#243a52;--mono:'JetBrains Mono',monospace;--font:'DM Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--w);font-family:var(--font);font-size:13px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--bord);border-radius:99px}
+#nav{position:sticky;top:0;z-index:100;background:var(--surf);border-bottom:1px solid var(--bord);padding:10px 20px;display:flex;align-items:center;gap:14px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--y),var(--o));display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ttl{font-family:var(--mono);font-weight:700;font-size:13px}
+.ttl .ml{color:var(--y)}.ttl .mp{color:var(--b)}.ttl .sub{color:var(--m);font-size:10px;font-weight:400;margin-left:8px}
+.spacer{flex:1}
+.vbtn{background:transparent;border:1px solid var(--bord);border-radius:4px;padding:4px 12px;color:var(--s);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.vbtn.active{background:var(--y);color:#000;border-color:var(--y)}
+#main{max-width:1440px;margin:0 auto;padding:18px 18px 80px}
+.panel{background:var(--surf);border:1px solid var(--bord);border-radius:14px;padding:18px;margin-bottom:16px}
+.plbl{color:var(--m);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.zones{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.zone{flex:1;min-width:160px;border:2px dashed var(--bord);border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;user-select:none}
+.zone:hover{border-color:var(--s)}.zone.drag{border-color:var(--b);background:rgba(48,144,240,.05)}
+.zh{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.zi{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.zn{font-family:var(--mono);font-weight:700;font-size:12px}.zhi{color:var(--m);font-size:10px;margin-top:1px}
+.zempty{color:var(--m);font-size:10px;text-align:center;padding:4px 0}
+.zfiles{display:flex;flex-direction:column;gap:2px}
+.zfile{border-radius:4px;padding:2px 8px;font-size:9px;color:var(--s);display:flex;align-items:center;gap:4px;font-family:var(--mono)}
+#dbg{display:none;background:rgba(0,184,160,.06);border:1px solid rgba(0,184,160,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-family:var(--mono);font-size:9px;color:var(--t);max-height:120px;overflow:auto}
+#errs{display:none;background:rgba(240,48,80,.08);border:1px solid rgba(240,48,80,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px}
+.eline{color:var(--r);font-size:10px;font-family:var(--mono)}
+#btnrun{background:var(--bord);color:var(--m);border:none;border-radius:6px;padding:9px 24px;font-family:var(--mono);font-weight:700;font-size:12px;cursor:not-allowed;transition:all .2s}
+#btnrun.ready{background:var(--y);color:#000;cursor:pointer;box-shadow:0 0 24px rgba(245,195,0,.2)}
+#kpibar{display:none;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.kpi{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:9px 14px;flex:1 1 80px}
+.klbl{color:var(--m);font-size:8px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+.kval{font-family:var(--mono);font-weight:700;font-size:13px}
+#listpanel{background:var(--surf);border:1px solid var(--bord);border-radius:14px;overflow:hidden;display:none}
+#tbar{padding:10px 14px;border-bottom:1px solid var(--bord);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#srch{background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:6px 12px;color:var(--w);font-size:11px;width:280px;font-family:var(--font)}
+#srch::placeholder{color:var(--m)}
+#sflt{background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:6px 10px;color:var(--w);font-size:11px;cursor:pointer}
+#cntlbl{color:var(--m);font-size:10px;font-family:var(--mono);margin-left:auto}
+#twrap{overflow-x:auto}
+#otbl{width:100%;border-collapse:collapse;font-size:11px}
+#otbl thead tr{background:var(--card)}
+#otbl th{padding:8px 10px;color:var(--m);font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-bottom:1px solid var(--bord);white-space:nowrap;user-select:none}
+#otbl th.r{text-align:right}
+#otbl td{padding:7px 10px;border-bottom:1px solid var(--bord)}
+#otbl td.r{text-align:right;font-family:var(--mono)}
+#otbl tbody tr{cursor:pointer;transition:background .1s}
+#otbl tbody tr:hover td{background:var(--cardhi)}
+#tfooter{padding:8px 14px;border-top:1px solid var(--bord);color:var(--m);font-size:9px;font-family:var(--mono)}
+.badge{display:inline-block;border-radius:3px;padding:1px 7px;font-family:var(--mono);font-weight:700;font-size:10px;white-space:nowrap}
+#empty{text-align:center;padding:60px 20px}
+.ei{font-size:40px;margin-bottom:12px}.et{font-family:var(--mono);font-size:13px;color:var(--s);margin-bottom:8px}.ed{color:var(--m);font-size:11px;max-width:520px;margin:0 auto;line-height:1.7}
+#moverlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;display:none;align-items:flex-start;justify-content:flex-end;padding:10px}
+#moverlay.open{display:flex}
+#modal{width:620px;max-height:calc(100vh - 20px);background:var(--surf);border:1px solid var(--bord);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 80px #000}
+#mhdr{padding:14px 18px;border-bottom:1px solid var(--bord);display:flex;align-items:flex-start;gap:10px}
+#minfo{flex:1}#mid{color:var(--y);font-family:var(--mono);font-weight:700;font-size:14px;margin-bottom:4px}
+#mmeta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px}
+#mclose{background:none;border:none;color:var(--m);cursor:pointer;font-size:20px;line-height:1;padding:0}
+#mflags{padding:7px 18px;border-bottom:1px solid var(--bord);display:flex;flex-wrap:wrap;gap:4px;display:none}
+#mkpis{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;background:var(--card);border-bottom:1px solid var(--bord)}
+.mkpi{padding:10px;border-right:1px solid var(--bord)}.mklbl{color:var(--m);font-size:8px;font-family:var(--mono);text-transform:uppercase;margin-bottom:2px}.mkval{font-family:var(--mono);font-weight:700;font-size:12px}
+#mtabs{display:flex;border-bottom:1px solid var(--bord);padding:0 18px;overflow-x:auto}
+.mtab{background:none;border:none;border-bottom:2px solid transparent;color:var(--s);font-size:11px;font-family:var(--mono);cursor:pointer;padding:9px 12px;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.mtab.active{color:var(--y);border-bottom-color:var(--y)}
+#mcont{flex:1;overflow:auto;padding:14px 18px}
+.stitle{color:var(--m);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin:14px 0 8px}
+.stitle:first-child{margin-top:0}
+.itbl{background:var(--card);border:1px solid var(--bord);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.irow{display:flex;justify-content:space-between;padding:5px 10px;border-bottom:1px solid var(--bord);font-size:10px}
+.irow:last-child{border-bottom:none}.ik{color:var(--m)}.iv{color:var(--s);font-family:var(--mono);text-align:right;word-break:break-all;max-width:60%}
+.litem{border-bottom:1px solid var(--bord)}
+.lhead{display:flex;gap:8px;padding:7px 10px;cursor:pointer;align-items:flex-start;transition:background .1s}
+.lhead:hover{background:var(--cardhi)}
+.ldot{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px}
+.lbody{flex:1}
+.ltop{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.lname{font-weight:600;font-size:10px}.lamt{font-family:var(--mono);font-size:11px;font-weight:700}
+.ldate{color:var(--m);font-size:9px}
+.ltags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+.ltag{background:var(--bord);border-radius:2px;padding:1px 5px;font-size:8px;color:var(--s);font-family:var(--mono)}
+.ldet{padding:6px 14px 10px;background:var(--card);border-top:1px solid var(--bord);font-size:9px;display:none}
+.lcaret{color:var(--m);font-size:9px;flex-shrink:0;padding-top:2px}
+.wfrow{display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--bord);font-size:11px;background:var(--card)}
+.wfrow:first-child{border-radius:6px 6px 0 0}.wfrow:last-child{border-radius:0 0 6px 6px;border-bottom:none}
+.wfop{font-family:var(--mono);margin-right:8px}.wflbl{color:var(--s)}.wfval{font-family:var(--mono);font-weight:600}
+.wftotal{background:var(--cardhi)}.wftotal .wflbl{color:var(--w);font-weight:700}.wftotal .wfval{font-size:13px}
+.dbox{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:8px;border:1px solid;margin-top:10px}
+.dl{font-weight:700;font-size:13px}.dv{font-family:var(--mono);font-weight:700;font-size:15px}
+#respanel{display:none}
+#respanel.active{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+/* Table column groups */
+.th-grp th{padding:4px 10px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.5px;text-align:center;border-bottom:none}
+.grp-ml{background:rgba(245,195,0,.06);color:var(--y);border-left:1px solid rgba(245,195,0,.2);border-right:1px solid rgba(245,195,0,.2)}
+.grp-mp{background:rgba(0,212,116,.06);color:var(--g);border-left:1px solid rgba(0,212,116,.2);border-right:1px solid rgba(0,212,116,.2)}
+#otbl th.grp-ml{background:rgba(245,195,0,.04);border-top:2px solid rgba(245,195,0,.25)}
+#otbl th.grp-mp{background:rgba(0,212,116,.04);border-top:2px solid rgba(0,212,116,.25)}
+#otbl td.col-ml{background:rgba(245,195,0,.02)}
+#otbl td.col-mp{background:rgba(0,212,116,.02)}
+.s11{font-size:10px}.s9{font-size:9px}.wt{font-weight:700}
+.cell-prod{max-width:180px;overflow:hidden}.prod-name{font-size:11px;color:var(--w);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prod-sku{font-size:8px;color:var(--m);font-family:var(--mono)}
+.xt{border-radius:2px;padding:1px 4px;font-size:7px;font-family:var(--mono);font-weight:700;margin-right:2px}
+.xt-full{background:rgba(144,96,240,.15);color:var(--p)}.xt-ml{background:rgba(245,195,0,.12);color:var(--y)}.xt-mp{background:rgba(48,144,240,.12);color:var(--b)}
+/* Section boxes in modal */
+.sec-hdr{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--card);border-bottom:1px solid var(--bord);margin:0 -18px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.sec-hdr:first-child{margin-top:-14px}.sec-icon{font-size:12px}
+.sec-body{padding:8px 0 4px}
+/* Waterfall lines */
+.wf-line{display:flex;align-items:baseline;gap:6px;padding:5px 8px;border-bottom:1px solid var(--bord);font-size:10px;background:var(--card);transition:background .1s}
+.wf-line:first-child{border-radius:6px 6px 0 0}.wf-line:last-child{border-radius:0 0 6px 6px;border-bottom:none}
+.wf-line:hover{background:var(--cardhi)}
+.wf-lop{font-family:var(--mono);font-weight:700;font-size:12px;width:14px;flex-shrink:0;text-align:center}
+.wf-llbl{flex:1;color:var(--s)}.wf-pct{color:var(--m);font-size:8px;font-family:var(--mono);margin-left:5px}
+.wf-lamt{font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0;min-width:80px;text-align:right}
+.wf-bal{color:var(--m);font-family:var(--mono);font-size:9px;flex-shrink:0;min-width:80px;text-align:right}
+.wf-total{display:flex;align-items:baseline;gap:6px;padding:8px;border:1px solid var(--bord);border-radius:6px;margin:6px 0;background:var(--cardhi)}
+.wf-total .wf-lop{font-size:14px}.wf-total .wf-lamt{font-size:12px}.wf-total .wt{color:var(--w);font-weight:700}
+/* MP event blocks */
+.mp-event{margin-bottom:8px;border:1px solid var(--bord);border-radius:6px;overflow:hidden}
+.mp-event-hdr{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;background:var(--card);font-size:9px;font-family:var(--mono);font-weight:700;border-bottom:1px solid var(--bord)}
+.mp-ev-type{font-weight:700;font-size:10px}.mp-ev-date{color:var(--m)}.mp-ev-rel{color:var(--t)}.mp-ev-src{color:var(--m)}
+.mp-event .wf-line{border-radius:0}
+.extrato-tag{padding:4px 10px;font-size:9px;color:var(--t);background:rgba(0,184,160,.06);font-family:var(--mono)}
+/* Result box */
+.resultado-box{border:1px solid var(--bord);border-radius:8px;overflow:hidden;margin-top:4px}
+.res-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--bord);font-size:11px}
+.res-row:last-child{border-bottom:none}.res-lbl{font-weight:600}.res-val{font-family:var(--mono);font-weight:700;font-size:12px}
+.res-delta{padding:13px 14px}.res-big{font-size:16px}
+/* Insight cards */
+.ins-card{border-left:3px solid;border-radius:4px;padding:10px 14px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div id="nav">
+  <div class="logo">⚖</div>
+  <div class="ttl"><span class="ml">ML</span> × <span class="mp">MP</span><span class="sub">Conciliação 360°</span></div>
+  <div class="spacer"></div>
+  <div id="navbtns" style="display:none;gap:8px;align-items:center">
+    <button class="vbtn active" data-view="lista">≡ Lista</button>
+    <button class="vbtn" data-view="resumo">◧ Resumo</button>
+    <button id="btnexp" style="background:transparent;border:1px solid var(--bord);border-radius:4px;padding:4px 12px;color:var(--s);font-family:var(--mono);font-size:11px;cursor:pointer">⬇ CSV</button>
+  </div>
+</div>
+<div id="main">
+  <div class="panel">
+    <div class="plbl">Carregar relatórios</div>
+    <div class="zones">
+      <div class="zone" id="zmp" data-side="mp">
+        <div class="zh"><div class="zi" style="background:rgba(48,144,240,.15);border:1px solid rgba(48,144,240,.3)">💳</div><div><div class="zn" style="color:var(--b)">Mercado Pago</div><div class="zhi">Dinheiro em conta · Vendas MP · Faturamento MP</div></div></div>
+        <div class="zempty" id="emp-mp">CSV ou XLSX</div><div class="zfiles" id="fls-mp"></div>
+      </div>
+      <div class="zone" id="zml" data-side="ml">
+        <div class="zh"><div class="zi" style="background:rgba(245,195,0,.15);border:1px solid rgba(245,195,0,.3)">🛒</div><div><div class="zn" style="color:var(--y)">Mercado Livre</div><div class="zhi">Faturamento ML · Vendas · Full</div></div></div>
+        <div class="zempty" id="emp-ml">CSV ou XLSX</div><div class="zfiles" id="fls-ml"></div>
+      </div>
+    </div>
+    <div id="dbg"></div>
+    <div id="errs"></div>
+    <button id="btnrun">▶ Conciliar</button>
+  </div>
+  <div id="kpibar"></div>
+  <div id="listpanel">
+    <div id="tbar">
+      <input id="srch" placeholder="Buscar por N.º de venda, SKU, produto, comprador…">
+      <select id="sflt"><option value="">Todos</option></select>
+      <span id="cntlbl"></span>
+    </div>
+    <div id="twrap">
+      <table id="otbl">
+        <thead>
+          <tr class="th-grp">
+            <th colspan="3" style="color:var(--m)"></th>
+            <th colspan="4" class="grp-ml">── ESPERADO (ML Vendas) ──</th>
+            <th colspan="1" class="grp-mp">── REAL (MP) ──</th>
+            <th colspan="3" style="color:var(--m)"></th>
+          </tr>
+          <tr>
+            <th data-col="order_id">N.º Pedido</th>
+            <th data-col="status">Status</th>
+            <th>Produto / SKU</th>
+            <th data-col="gross" class="r grp-ml">Bruto</th>
+            <th data-col="fee_mkp" class="r grp-ml">Comissão</th>
+            <th class="r grp-ml">Frete+Fin.</th>
+            <th data-col="expected_net" class="r grp-ml">Líq. Esperado</th>
+            <th data-col="net_mp" class="r grp-mp">Líq. MP</th>
+            <th data-col="rebate" class="r">Rebate</th>
+            <th data-col="delta" class="r">Δ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="tfooter">Clique em qualquer linha para ver o razão completo · cascata financeira · rebates do METADATA</div>
+  </div>
+  <div id="respanel"></div>
+  <div id="empty">
+    <div class="ei">📊</div>
+    <div class="et">Pronto para conciliar</div>
+    <div class="ed">
+      Carregue os relatórios do <strong style="color:var(--b)">Mercado Pago</strong> (Dinheiro em conta, Vendas extraídas, Faturamento MP) e do <strong style="color:var(--y)">Mercado Livre</strong> (Faturamento ML, Vendas, Full).<br><br>
+      Chave de cruzamento: <strong style="color:var(--w)">EXTERNAL_REFERENCE = N.º de venda</strong> do settlement_report.
+    </div>
+  </div>
+</div>
+<div id="moverlay">
+  <div id="modal">
+    <div id="mhdr"><div id="minfo"><div id="mid"></div><div id="mmeta"></div></div><button id="mclose">×</button></div>
+    <div id="mflags"></div>
+    <div id="mkpis"></div>
+    <div id="mtabs">
+      <button class="mtab active" data-tab="conc">⚖ Conciliação</button>
+      <button class="mtab" data-tab="mov">💳 Movimentos MP</button>
+      <button class="mtab" data-tab="ml">🛒 Razão ML</button>
+      <button class="mtab" data-tab="full">📦 Full & ADS</button>
+    </div>
+    <div id="mcont"></div>
+  </div>
+</div>
+<script>
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+var BRL = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+function R(v){ return BRL.format(v==null?0:+v||0); }
+function Dt(d){
+  if(!d) return '';
+  var s = d.toString().trim();
+  // ISO format: 2026-05-22T23:58:34.000-03:00
+  try { var p = new Date(s); if(!isNaN(p)) return p.toLocaleDateString('pt-BR'); } catch(e){}
+  return s.split('T')[0] || s;
+}
+function pa(v){
+  if(v==null||v==='') return 0;
+  var s = v.toString().replace(/[R$\s%]/g,'').trim();
+  if(!s) return 0;
+  var hasDot = s.indexOf('.') >= 0;
+  var hasComma = s.indexOf(',') >= 0;
+  if(hasDot && hasComma){
+    // Both separators: determine which is thousands vs decimal by position
+    if(s.lastIndexOf(',') > s.lastIndexOf('.')){
+      // Brazilian format: 1.234,56 → remove dots, comma becomes decimal
+      s = s.replace(/\./g,'').replace(',','.');
+    } else {
+      // US format: 1,234.56 → remove commas
+      s = s.replace(/,/g,'');
+    }
+  } else if(hasComma && !hasDot){
+    // Only comma: treat as decimal separator (79,99 → 79.99)
+    // Unless 3 digits after comma and more digits before (thousands): 1,234 → 1234
+    var ci = s.lastIndexOf(',');
+    var after = s.length - ci - 1;
+    if(after === 3 && ci > 0 && !isNaN(parseInt(s.charAt(0)))) {
+      s = s.replace(/,/g,'');
+    } else {
+      s = s.replace(',','.');
+    }
+  }
+  // Only dots (US decimal like 79.99) or no separator: parse directly
+  var n = parseFloat(s); return isNaN(n)?0:n;
+}
+function esc(s){ if(s==null) return ''; return s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var S = { mpFiles:[], mlFiles:[], ledger:null, filtered:[], sortCol:'order_id', sortDir:'asc', search:'', sf:'', view:'lista' };
+
+// ─── FILE LOADING ─────────────────────────────────────────────────────────────
+function loadFile(file, cb){
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  // Handle Extrato MP two-section CSV (INITIAL_BALANCE header + blank line + transaction data)
+  function tryExtratoParse(text){
+    var lines = text.split(/\r?\n/);
+    // Find blank line separator between summary and transactions
+    var sepIdx = -1;
+    for(var i=0;i<lines.length;i++){
+      if(lines[i].trim()==='') { sepIdx=i; break; }
+    }
+    if(sepIdx>0 && sepIdx<lines.length-2){
+      var txLines = lines.slice(sepIdx+1).filter(function(l){ return l.trim()!==''; });
+      if(txLines.length>1){
+        var txText = txLines.join('\n');
+        Papa.parse(txText,{
+          header:true, skipEmptyLines:true, delimiter:';',
+          complete:function(r){ cb(r.data||[],'extrato_split'); },
+          error:function(){ cb([],'extrato parse error'); }
+        });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function tryCSV(){
+    // First, read as text to check for extrato two-section format
+    var fr2 = new FileReader();
+    fr2.onload = function(ev){
+      var text = ev.target.result||'';
+      var firstLine = text.split(/\r?\n/)[0]||'';
+      // Detect extrato format by first line header
+      if(firstLine.indexOf('INITIAL_BALANCE')>=0||firstLine.indexOf('CREDITS')>=0){
+        if(tryExtratoParse(text)) return;
+      }
+      // Normal CSV parse
+      Papa.parse(file,{
+        header:true, skipEmptyLines:true, encoding:'UTF-8', delimitersToGuess:[';',',','\t','|'],
+        complete:function(r){
+          if(r.data&&r.data.length>0){ cb(r.data,null); }
+          else { Papa.parse(file,{header:true,skipEmptyLines:true,encoding:'UTF-8',delimiter:';',complete:function(r2){ cb(r2.data||[],null); },error:function(e){ cb([],e.message); }}); }
+        },
+        error:function(e){ cb([],e.message); }
+      });
+    };
+    fr2.onerror = function(){
+      Papa.parse(file,{
+        header:true, skipEmptyLines:true, encoding:'UTF-8', delimitersToGuess:[';',',','\t','|'],
+        complete:function(r){ cb(r.data||[],null); },
+        error:function(e){ cb([],e.message); }
+      });
+    };
+    fr2.readAsText(file,'UTF-8');
+  }
+  if(ext==='csv'||ext==='txt'){ tryCSV(); return; }
+  var fr = new FileReader();
+  fr.onload = function(ev){
+    try {
+      var wb = XLSX.read(ev.target.result,{type:'array'});
+      // For ML Faturamento: data starts at row 8 (index 7), headers at row 8
+      // For Full: data starts at row 6 (index 5)
+      // Try each sheet
+      var allData = [];
+      for(var si=0;si<wb.SheetNames.length;si++){
+        var ws = wb.Sheets[wb.SheetNames[si]];
+        var raw = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(!raw||!raw.length) continue;
+        // Find the header row (first row with >3 non-empty cells that looks like headers)
+        var hrow = -1, hdata = null;
+        for(var ri=0;ri<Math.min(15,raw.length);ri++){
+          var cells = raw[ri].filter(function(c){ return c!==null&&c!==undefined&&c!==''; });
+          if(cells.length>=3){
+            // Check if it looks like a header (strings, not numbers)
+            var strCount = cells.filter(function(c){ return isNaN(pa(c))||c.toString().length>6; }).length;
+            if(strCount>=3){ hrow=ri; hdata=raw[ri]; break; }
+          }
+        }
+        if(hrow<0) continue;
+        var headers = hdata;
+        for(var di=hrow+1;di<raw.length;di++){
+          var row = raw[di];
+          var obj = {};
+          var hasData = false;
+          for(var ci=0;ci<headers.length;ci++){
+            if(headers[ci]!==null&&headers[ci]!==undefined&&headers[ci]!==''){
+              obj[headers[ci].toString()] = row[ci]!==undefined?row[ci]:'';
+              if(row[ci]!==''&&row[ci]!==null&&row[ci]!==undefined) hasData=true;
+            }
+          }
+          if(hasData) allData.push(obj);
+        }
+      }
+      if(allData.length>0){ cb(allData,null); } else { tryCSV(); }
+    } catch(err){ tryCSV(); }
+  };
+  fr.onerror = function(){ tryCSV(); };
+  fr.readAsArrayBuffer(file);
+}
+
+// ─── FILE TYPE DETECTION ─────────────────────────────────────────────────────
+// Based on real observed headers from the user's files
+function detectType(headers, fname){
+  var hset = {};
+  for(var i=0;i<headers.length;i++) hset[headers[i].toString().trim()] = 1;
+  var fname_l = fname.toLowerCase();
+
+  // MP Dinheiro em conta (settlement report): EXTERNAL_REFERENCE + SOURCE_ID + net amount
+  if(hset['EXTERNAL_REFERENCE']&&hset['SOURCE_ID']&&hset['SETTLEMENT_NET_AMOUNT']) return 'mp_settlement';
+  if(hset['EXTERNAL_REFERENCE']&&hset['SOURCE_ID']&&hset['TRANSACTION_TYPE']) return 'mp_settlement';
+
+  // MP Vendas extraídas — two possible key columns
+  if(hset['Número da venda no Mercado Livre (order_id)']) return 'mp_vendas';
+  if(hset['Código de referência (external_reference)']&&hset['Número da transação do Mercado Pago (operation_id)']) return 'mp_vendas';
+  if(hset['Data da compra (date_created)']&&hset['Status da operação (status)']) return 'mp_vendas';
+
+  // MP Faturamento (real file has these exact column names)
+  if(hset['N° NF-e']&&hset['Número do movimento']&&hset['Referência externa']) return 'mp_faturamento';
+  if(hset['Número do movimento']&&hset['Operação relacionada']&&hset['Valor da tarifa']) return 'mp_faturamento';
+  if(hset['Número do movimento']&&hset['Detalhe']&&hset['Valor da tarifa']) return 'mp_faturamento';
+  // Also catch "N.º" variant
+  if(hset['N.º NF-e']&&hset['Número do movimento']) return 'mp_faturamento';
+
+  // Extrato MP (bank statement — after two-section split)
+  if(hset['RELEASE_DATE']&&hset['REFERENCE_ID']&&hset['TRANSACTION_NET_AMOUNT']) return 'mp_extrato';
+  // Portuguese-header extrato (painel export)
+  if(hset['RELEASE_DATE']&&hset['TRANSACTION_TYPE']&&hset['PARTIAL_BALANCE']) return 'mp_extrato';
+  // Fallback: original two-section header (shouldn't reach here after split)
+  if(hset['INITIAL_BALANCE']&&hset['CREDITS']&&hset['DEBITS']) return 'mp_extrato_resumo';
+
+  // ML Faturamento XLSX: "Número da venda" + fee columns
+  if(hset['Número da venda']&&hset['Pagamento']&&hset['Valor da tarifa']) return 'ml_faturamento';
+  if(hset['Número da venda']&&hset['Detalhe']&&hset['Valor da tarifa']) return 'ml_faturamento';
+
+  // ML Vendas XLSX
+  if(hset['N.º de venda']&&hset['Total (BRL)']) return 'ml_vendas';
+  if(hset['N.º de venda']&&hset['Receita por produtos (BRL)']) return 'ml_vendas';
+
+  // Full Coleta
+  if(hset['Nº NF-e']&&(hset['Valor do custo']||hset['Valor da tarifa'])&&hset['SKU']) return 'ml_full';
+
+  // Filename hints (last resort)
+  if(fname_l.indexOf('dinheiro_em_conta')>=0||fname_l.indexOf('dinheiro em conta')>=0||fname_l.indexOf('settlement')>=0) return 'mp_settlement';
+  if(fname_l.indexOf('relatorio_de_dinheiro')>=0) return 'mp_settlement';
+  if(fname_l.indexOf('faturamento')>=0&&(fname_l.indexOf('mercadopago')>=0||fname_l.indexOf('mercado_pago')>=0||fname_l.indexOf('_mp')>=0)) return 'mp_faturamento';
+  if(fname_l.indexOf('faturamento')>=0&&(fname_l.indexOf('mercadolivre')>=0||fname_l.indexOf('mercado_livre')>=0||fname_l.indexOf('_ml')>=0)) return 'ml_faturamento';
+  if(fname_l.indexOf('vendas_extraido')>=0||fname_l.indexOf('relatorio_de_vendas_extraido')>=0) return 'mp_vendas';
+  if((fname_l.indexOf('vendas')>=0||fname_l.indexOf('sales')>=0)&&(fname_l.indexOf('mercado_pago')>=0||fname_l.indexOf('mercadopago')>=0)) return 'mp_vendas';
+  if((fname_l.indexOf('vendas')>=0||fname_l.indexOf('sales')>=0)&&(fname_l.indexOf('mercado_livre')>=0||fname_l.indexOf('mercadolivre')>=0)) return 'ml_vendas';
+  if(fname_l.indexOf('full')>=0) return 'ml_full';
+  if(fname_l.indexOf('extrato')>=0) return 'mp_extrato';
+
+  return 'unknown';
+}
+
+// ─── LEDGER BUILD ─────────────────────────────────────────────────────────────
+// Cross-reference key: EXTERNAL_REFERENCE (settlement) == order_id (everywhere else)
+function buildLedger(allFiles){
+  var ledger = {};
+  function get(id){
+    id = id ? id.toString().trim() : '';
+    if(!id||id===''||id==='undefined') return null;
+    if(!ledger[id]) ledger[id] = {
+      order_id:id, sku:'', produto:'', comprador:'', canal:'', status_venda:'',
+      gross:0, net_mp:0, fee_mkp:0, fee_ship:0, fee_fin:0, fee_tax:0, fee_mp_own:0, fee_total_mp_billing:0,
+      coupon:0, rebate:0, rebate_items:[],
+      total_fees:0, delta:0,
+      lines_settlement:[], lines_mp_vendas:[], lines_mp_fat:[], lines_ml_fat:[], lines_ml_vendas:[], lines_full:[],
+      flags:[], status:'',
+    };
+    return ledger[id];
+  }
+
+  var fi, ri, row, e, id;
+  for(fi=0;fi<allFiles.length;fi++){
+    var af = allFiles[fi];
+    var type = af.type;
+    var rows = af.records;
+    for(ri=0;ri<rows.length;ri++){
+      row = rows[ri];
+
+      if(type==='mp_settlement'){
+        // Key: EXTERNAL_REFERENCE contains the ML order_id for ML sales
+        id = (row['EXTERNAL_REFERENCE']||'').toString().trim();
+        // Skip non-order EXTERNAL_REFERENCE values:
+        // cashback_XXXXXX → MP wallet cashback; reserve_XXXXXX → blocked funds; empty → system entries
+        if(!id || id.indexOf('cashback_')===0 || id.indexOf('reserve_')===0 || id.indexOf('payout_')===0) continue;
+        e = get(id); if(!e) continue;
+        var lt = (row['TRANSACTION_TYPE']||'').toString().trim();
+        var gross = pa(row['TRANSACTION_AMOUNT']);
+        var net = pa(row['SETTLEMENT_NET_AMOUNT']);
+        var fee = pa(row['FEE_AMOUNT']);
+        var mkp = pa(row['MKP_FEE_AMOUNT']);
+        var ship = pa(row['SHIPPING_FEE_AMOUNT']);
+        var fin = pa(row['FINANCING_FEE_AMOUNT']);
+        var tax = pa(row['TAXES_AMOUNT']);
+        var coup = pa(row['COUPON_AMOUNT']);
+        if(!e.sku && row['PRODUCT_SKU']) e.sku = row['PRODUCT_SKU'];
+        if(!e.produto && row['SALE_DETAIL']) e.produto = row['SALE_DETAIL'].toString().replace(/^"|"$/g,'');
+        if(!e.canal && row['BUSINESS_UNIT']) e.canal = row['BUSINESS_UNIT'];
+        // Rebate from METADATA (SALE_DETAIL sometimes contains it)
+        var meta = parseMeta(row['SALE_DETAIL']||'');
+        var rbs = extractRebates(meta);
+        for(var ri2=0;ri2<rbs.length;ri2++){ e.rebate+=rbs[ri2].value; e.rebate_items.push(rbs[ri2]); }
+        e.lines_settlement.push({
+          date:Dt(row['SETTLEMENT_DATE']),
+          release:Dt(row['MONEY_RELEASE_DATE']),
+          type:lt, source_id:row['SOURCE_ID'],
+          gross:gross, net:net, fee:fee, mkp:mkp, ship:ship, fin:fin, tax:tax, coupon:coup,
+          sku:row['PRODUCT_SKU'], produto:row['SALE_DETAIL'],
+          parcelas:row['INSTALLMENT_NUMBER'],
+        });
+        if(lt==='SETTLEMENT'||lt==='CASHBACK'||lt==='CASHBACK_CANCEL'||gross!==0){
+          if(lt==='SETTLEMENT'){ e.gross+=gross; e.net_mp+=net; e.fee_mkp+=Math.abs(mkp); e.fee_ship+=Math.abs(ship); e.fee_fin+=Math.abs(fin); e.fee_tax+=Math.abs(tax); e.coupon+=Math.abs(coup); }
+          else if(lt==='CASHBACK'){ e.rebate+=gross; e.rebate_items.push({key:'CASHBACK',value:gross}); }
+          else if(lt==='CASHBACK_CANCEL'){ e.rebate+=gross; e.rebate_items.push({key:'CASHBACK_CANCEL',value:gross}); }
+          else if(lt==='REFUND'||lt==='CHARGEBACK'){ e.fee_mkp+=Math.abs(mkp); }
+        }
+      }
+
+      else if(type==='mp_vendas'){
+        // Primary key: "Número da venda no Mercado Livre (order_id)" = ML order ID
+        // Fallback: "Código de referência (external_reference)" = same value for ML orders
+        // Note: "Código de referência" equals EXTERNAL_REFERENCE in settlement — perfect cross-ref
+        var ordId = (row['Número da venda no Mercado Livre (order_id)']||'').toString().trim();
+        if(!ordId) ordId = (row['Código de referência (external_reference)']||'').toString().trim();
+        id = ordId;
+        e = get(id); if(!e) continue;
+        e.lines_mp_vendas.push(row);
+        if(!e.produto) e.produto = row['Descrição da operação (reason)']||'';
+        if(!e.comprador) e.comprador = row['Nome da contraparte (counterpart_name)']||row['Apelido da contraparte no Mercado Livre (counterpart_nickname)']||'';
+        if(!e.sku) e.sku = row['SKU do produto (seller_custom_field)']||row['SKU']||'';
+        if(!e.status_venda) e.status_venda = row['Status da operação (status)']||row['Status']||'';
+        // If settlement didn't populate financials, get them from MP Vendas
+        var v_gross = pa(row['Valor do produto (transaction_amount)']);
+        var v_net = pa(row['Valor total recebido (net_received_amount)']);
+        var v_mkp = Math.abs(pa(row['Tarifa pelo uso da plataforma de terceiros (marketplace_fee)']));
+        var v_ship = Math.abs(pa(row['Frete (shipping_cost)']));
+        var v_fin = Math.abs(pa(row['Custos de parcelamento (financing_fee)']));
+        var v_mp_own = Math.abs(pa(row['Tarifa do Mercado Pago (mercadopago_fee)']));
+        if(e.gross===0 && v_gross!==0){
+          e.gross = v_gross;
+          e.net_mp = v_net;
+          e.fee_mkp += v_mkp;
+          e.fee_ship += v_ship;
+          e.fee_fin += v_fin;
+          e.fee_mp_own += v_mp_own;
+        }
+      }
+
+      else if(type==='mp_extrato'){
+        // Extrato MP (bank statement) — not tied to individual orders
+        // Store as a separate bucket keyed by REFERENCE_ID (SOURCE_ID equivalent)
+        var refId = (row['REFERENCE_ID']||'').toString().trim();
+        var txAmt = pa(row['TRANSACTION_NET_AMOUNT']);
+        var txType = (row['TRANSACTION_TYPE']||'').toString().trim();
+        var txDate = (row['RELEASE_DATE']||'').toString().trim();
+        // Try to cross-reference with settlement via REFERENCE_ID → source_id
+        if(refId){
+          var ekeys2 = Object.keys(ledger);
+          var matched = false;
+          for(var eki2=0;eki2<ekeys2.length;eki2++){
+            var ent2 = ledger[ekeys2[eki2]];
+            for(var li3=0;li3<ent2.lines_settlement.length;li3++){
+              if(ent2.lines_settlement[li3].source_id&&ent2.lines_settlement[li3].source_id.toString()===refId){
+                ent2.lines_settlement[li3]._extrato = {type:txType, date:txDate, net:txAmt, balance:row['PARTIAL_BALANCE']};
+                matched = true; break;
+              }
+            }
+            if(matched) break;
+          }
+        }
+      }
+
+      else if(type==='mp_faturamento'){
+        // "Referência externa" = order_id (sometimes short merchant order, not full ML order)
+        // "Operação relacionada" = SOURCE_ID (payment_id)
+        // Try Operação relacionada first to match with settlement SOURCE_ID
+        var ref = (row['Referência externa']||'').toString().trim();
+        var oprel = (row['Operação relacionada']||'').toString().trim();
+        // Find matching entry by SOURCE_ID first
+        var found = null;
+        if(oprel){
+          var ekeys = Object.keys(ledger);
+          for(var eki=0;eki<ekeys.length;eki++){
+            var ent = ledger[ekeys[eki]];
+            for(var li2=0;li2<ent.lines_settlement.length;li2++){
+              if(ent.lines_settlement[li2].source_id&&ent.lines_settlement[li2].source_id.toString()===oprel){
+                found = ent; break;
+              }
+            }
+            if(found) break;
+          }
+        }
+        if(!found && ref) found = get(ref);
+        if(!found) found = get(oprel||ref||'mp_fat_'+ri);
+        found.lines_mp_fat.push({
+          date:row['Data do movimento'], nfe:row['N° NF-e'],
+          tarifa_id:row['Número da tarifa'], movimento_id:row['Número do movimento'],
+          detalhe:row['Detalhe'], cobrado_op:row['Cobrados na operação'],
+          valor:pa(row['Valor da tarifa']), tipo_op:row['Tipo de operação'],
+          tipo_pag:row['Tipo de pagamento'], cliente:row['Cliente'],
+          valor_op:pa(row['Valor da operação']),
+        });
+        found.fee_total_mp_billing += pa(row['Valor da tarifa']);
+      }
+
+      else if(type==='ml_faturamento'){
+        id = (row['Número da venda']||'').toString().trim();
+        e = get(id); if(!e) continue;
+        if(!e.produto && row['Título do anúncio']) e.produto = row['Título do anúncio'];
+        if(!e.comprador && row['Cliente']) e.comprador = row['Cliente'];
+        if(!e.sku && row['Código ML']) e.sku = row['Código ML'];
+        e.lines_ml_fat.push({
+          date:row['Data da tarifa']||row['Data de venda'], nfe:row['N° NF-e'],
+          tarifa_id:row['Número da tarifa'], detalhe:row['Detalhe'],
+          descontado:row['Descontado da operação'], valor:pa(row['Valor da tarifa']),
+          desconto:pa(row['Desconto comercial']), tipo:row['Tipo do anúncio'],
+          categoria:row['Categoria do anúncio'], titulo:row['Título do anúncio'],
+          pagamento:row['Pagamento'], envio:row['Número da envío'],
+          embalagem:row['Número da embalagem'], anuncio:row['Número do anúncio'],
+        });
+      }
+
+      else if(type==='ml_vendas'){
+        id = (row['N.º de venda']||'').toString().trim();
+        e = get(id); if(!e) continue;
+        if(!e.produto && row['Título do anúncio']) e.produto = row['Título do anúncio'];
+        if(!e.comprador && row['Comprador']) e.comprador = row['Comprador'];
+        if(!e.sku && row['SKU']) e.sku = row['SKU'];
+        if(e.gross===0) e.gross = pa(row['Receita por produtos (BRL)']);
+        e.lines_ml_vendas.push({
+          date:row['Data da venda'], status:row['Estado'], estado_desc:row['Descrição do status'],
+          gross:pa(row['Receita por produtos (BRL)']), tarifa_venda:pa(row['Tarifa de venda e impostos (BRL)']),
+          frete_rec:pa(row['Receita por envio (BRL)']), frete_tar:pa(row['Tarifas de envio (BRL)']),
+          descontos:pa(row['Descontos e bônus']), total:pa(row['Total (BRL)']),
+          sku:row['SKU'], titulo:row['Título do anúncio'], anuncio:row['# de anúncio'],
+          tipo:row['Tipo de anúncio'], comprador:row['Comprador'], cep:row['CEP'],
+          reclamacao:row['Reclamação aberta'], mediacao:row['Em mediação'],
+          unidades:row['Unidades'], preco_unit:pa(row['Preço unitário de venda do anúncio (BRL)']),
+          publicidade:row['Venda por publicidade'],
+        });
+      }
+
+      else if(type==='ml_full'){
+        // Full doesn't link to order_id directly — link by SKU
+        var sku_full = (row['SKU']||row['Código ML']||'').toString().trim();
+        e = get('full_'+sku_full+'_'+(row['Nº do custo']||row['Nº da tarifa']||ri));
+        e.lines_full.push({
+          date:row['Data do custo']||row['Data da tarifa'], nfe:row['Nº NF-e'],
+          custo_id:row['Nº do custo']||row['Nº da tarifa'], detalhe:row['Detalhe'],
+          valor:pa(row['Valor do custo']||row['Valor da tarifa']),
+          sku:row['SKU'], titulo:row['Título do anúncio'], anuncio:row['Nº do anúncio'],
+        });
+      }
+    }
+  }
+
+  // ── Compute summaries ─────────────────────────────────────────────────────
+  var eka = Object.keys(ledger);
+  for(var ei=0;ei<eka.length;ei++){
+    var ent = ledger[eka[ei]];
+    ent.has_mp_data = ent.lines_settlement.length > 0;
+    ent.has_ml_data = ent.lines_ml_vendas.length > 0;
+    ent.total_fees = ent.fee_mkp + ent.fee_ship + ent.fee_fin + ent.fee_tax + ent.fee_mp_own + ent.coupon;
+
+    // Expected values — from ML Vendas report (what ML says seller should receive)
+    if(ent.has_ml_data){
+      var lvx = ent.lines_ml_vendas[0];
+      ent.expected_gross = lvx.gross > 0 ? lvx.gross : ent.gross;
+      ent.expected_fee_mkp = Math.abs(lvx.tarifa_venda);
+      ent.expected_fee_ship = Math.abs(lvx.frete_tar);
+      // ML Vendas "Total (BRL)" is the net the seller should receive
+      ent.expected_net = lvx.total !== 0 ? lvx.total : (ent.expected_gross - ent.expected_fee_mkp - ent.expected_fee_ship);
+    } else {
+      ent.expected_gross = ent.gross;
+      ent.expected_fee_mkp = ent.fee_mkp;
+      ent.expected_fee_ship = ent.fee_ship;
+      ent.expected_net = ent.gross - ent.total_fees + ent.rebate;
+    }
+
+    // If no settlement data, fill from ML Vendas
+    if(!ent.has_mp_data && ent.has_ml_data){
+      var lvx2 = ent.lines_ml_vendas[0];
+      if(ent.gross === 0) ent.gross = lvx2.gross;
+      if(ent.net_mp === 0) ent.net_mp = lvx2.total;
+      if(ent.total_fees === 0) ent.total_fees = Math.abs(lvx2.tarifa_venda) + Math.abs(lvx2.frete_tar);
+    }
+
+    // Effective commission rate
+    ent.commission_rate = ent.gross > 0 ? (ent.fee_mkp / ent.gross) : 0;
+
+    // Delta: what MP actually paid vs what ML report says should be paid
+    ent.delta = ent.net_mp - ent.expected_net;
+
+    // Status
+    var vs = ent.status_venda || (ent.has_ml_data ? ent.lines_ml_vendas[0].status : '');
+    var rec_ab = ent.has_ml_data ? ent.lines_ml_vendas[0].reclamacao : '';
+    var med = ent.has_ml_data ? ent.lines_ml_vendas[0].mediacao : '';
+    if(vs==='in_mediation'||med==='Sim') ent.status='mediacao';
+    else if(vs==='cancelled'||ent.lines_settlement.some(function(l){ return l.type==='REFUND'; })) ent.status='cancelado';
+    else if(rec_ab==='Sim') ent.status='reclamacao';
+    else if(!ent.has_mp_data&&!ent.has_ml_data) ent.status='so_fat';
+    else if(ent.gross===0) ent.status='sem_dados';
+    else if(Math.abs(ent.delta)<0.02) ent.status='ok';
+    else if(Math.abs(ent.delta)<1.00) ent.status='diff_centavos';
+    else ent.status='divergente';
+
+    // Flags
+    if(ent.rebate!==0) ent.flags.push({sev:'info',msg:'Rebate: '+R(ent.rebate)});
+    if(Math.abs(ent.delta)>=0.02){
+      var msg_delta='Δ '+R(ent.delta)+' — '+(ent.delta<0?'MP pagou menos que o ML informa':'MP pagou mais que o ML informa');
+      ent.flags.push({sev:'error',msg:msg_delta});
+    }
+    if(vs==='in_mediation') ent.flags.push({sev:'warn',msg:'Em mediação'});
+    if(rec_ab==='Sim') ent.flags.push({sev:'warn',msg:'Reclamação aberta'});
+    if(!ent.has_mp_data&&ent.has_ml_data) ent.flags.push({sev:'warn',msg:'Sem settlement MP'});
+    if(!ent.has_ml_data&&ent.has_mp_data) ent.flags.push({sev:'info',msg:'Sem ML Vendas (Δ calculado)'});
+  }
+  return ledger;
+}
+
+// ─── METADATA ────────────────────────────────────────────────────────────────
+function parseMeta(raw){
+  if(!raw||raw==='') return {};
+  var str = raw.toString().trim();
+  try { str=decodeURIComponent(str); } catch(e){}
+  if(str.charAt(0)==='"'&&str.charAt(str.length-1)==='"') str=str.slice(1,-1);
+  str = str.replace(/\\"/g,'"').replace(/\\n/g,' ');
+  try { var o=JSON.parse(str); var out={}; Object.keys(o).forEach(function(k){ out[k]=o[k]; }); return out; } catch(e2){}
+  return {};
+}
+function extractRebates(meta){
+  var rebates=[], keys=['fee_discount','rebate','seller_discount','discount_detail','campaign_discount','discount_amount'];
+  for(var i=0;i<keys.length;i++){
+    var v=meta[keys[i]]; if(v!=null){ var n=pa(v); if(n!==0) rebates.push({key:keys[i],value:n}); }
+  }
+  return rebates;
+}
+
+// ─── STATUS ──────────────────────────────────────────────────────────────────
+var ST = {
+  ok:{l:'Conciliado',c:'#00d474'}, diff_centavos:{l:'Dif. centavos',c:'#f07820'},
+  divergente:{l:'Divergência',c:'#f03050'}, mediacao:{l:'Em mediação',c:'#f07820'},
+  cancelado:{l:'Cancelado',c:'#f07820'}, reclamacao:{l:'Reclamação',c:'#f03050'},
+  so_fat:{l:'Só tarifas',c:'#f5c300'}, sem_dados:{l:'Sem dados',c:'#4a6880'},
+};
+function badge(st, sm){
+  var s=ST[st]||{l:st||'?',c:'#4a6880'};
+  var sz=sm?'font-size:9px;padding:1px 6px':'font-size:10px;padding:2px 8px';
+  return '<span class="badge" style="background:'+s.c+'18;color:'+s.c+';border:1px solid '+s.c+'44;'+sz+'">'+esc(s.l)+'</span>';
+}
+function dc(v){ if(Math.abs(v)<0.01) return 'var(--m)'; return v>0?'var(--g)':'var(--r)'; }
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+var INMP=document.createElement('input'); INMP.type='file'; INMP.multiple=true; INMP.accept='.csv,.xlsx,.xls,.txt';
+var INML=document.createElement('input'); INML.type='file'; INML.multiple=true; INML.accept='.csv,.xlsx,.xls,.txt';
+
+function setupZone(zid, side, inp){
+  var z=document.getElementById(zid);
+  z.addEventListener('click',function(){ inp.click(); });
+  z.addEventListener('dragover',function(ev){ ev.preventDefault(); z.classList.add('drag'); });
+  z.addEventListener('dragleave',function(){ z.classList.remove('drag'); });
+  z.addEventListener('drop',function(ev){
+    ev.preventDefault(); z.classList.remove('drag');
+    var fs=Array.prototype.slice.call(ev.dataTransfer.files).filter(function(f){ return /\.(csv|xlsx|xls|txt)$/i.test(f.name); });
+    if(fs.length) handleFiles(side,fs);
+  });
+  inp.addEventListener('change',function(){ var fs=Array.prototype.slice.call(inp.files); if(fs.length) handleFiles(side,fs); inp.value=''; });
+}
+setupZone('zmp','mp',INMP); setupZone('zml','ml',INML);
+
+function handleFiles(side, files){
+  var done=0, total=files.length, parsed=[], errs=[];
+  files.forEach(function(file){
+    loadFile(file,function(data,err){
+      if(err){ errs.push(file.name+': '+err); }
+      else {
+        var type = data.length>0 ? detectType(Object.keys(data[0]), file.name) : 'unknown';
+        parsed.push({file:file, type:type, records:data});
+        // Debug
+        var dbg=document.getElementById('dbg');
+        dbg.style.display='block';
+        var hdrs = data.length>0 ? Object.keys(data[0]).slice(0,5).join(' | ') : 'vazio';
+        dbg.innerHTML += '<div><b style="color:var(--y)">'+esc(file.name)+'</b> → <b>'+esc(type)+'</b> | '+data.length+' linhas | '+esc(hdrs)+'</div>';
+      }
+      done++;
+      if(done===total){
+        if(errs.length) showErrs(errs);
+        if(side==='mp') S.mpFiles=S.mpFiles.concat(parsed);
+        else S.mlFiles=S.mlFiles.concat(parsed);
+        updateZoneUI(); updateRunBtn();
+      }
+    });
+  });
+}
+
+function updateZoneUI(){
+  function rz(files,eid,fid,col){
+    var e=document.getElementById(eid), fc=document.getElementById(fid);
+    if(!files.length){ e.style.display=''; fc.innerHTML=''; return; }
+    e.style.display='none';
+    fc.innerHTML=files.map(function(f){
+      return '<div class="zfile" style="background:'+col+'12"><span style="color:'+col+';font-size:8px">✓</span>'+esc(f.file.name.slice(0,28))+' <span style="color:var(--m);margin-left:auto;font-size:8px">'+esc(f.type)+'</span></div>';
+    }).join('');
+  }
+  rz(S.mpFiles,'emp-mp','fls-mp','var(--b)');
+  rz(S.mlFiles,'emp-ml','fls-ml','var(--y)');
+}
+function updateRunBtn(){
+  var btn=document.getElementById('btnrun');
+  var ok=S.mpFiles.length||S.mlFiles.length;
+  btn.className=ok?'ready':''; btn.disabled=!ok;
+}
+function showErrs(errs){
+  var b=document.getElementById('errs');
+  b.style.display='block';
+  b.innerHTML=errs.map(function(e){ return '<div class="eline">⚠ '+esc(e)+'</div>'; }).join('');
+}
+
+// ─── RUN ─────────────────────────────────────────────────────────────────────
+document.getElementById('btnrun').addEventListener('click',function(){
+  if(!S.mpFiles.length&&!S.mlFiles.length) return;
+  var btn=document.getElementById('btnrun');
+  btn.textContent='⟳ Processando…';
+  setTimeout(function(){
+    try {
+      S.ledger = buildLedger(S.mpFiles.concat(S.mlFiles));
+      S.filtered = Object.values(S.ledger);
+      renderAll();
+    } catch(ex){ showErrs([ex.message+' | '+ex.stack.slice(0,200)]); }
+    btn.textContent='▶ Conciliar';
+  },100);
+});
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll(){
+  document.getElementById('empty').style.display='none';
+  document.getElementById('navbtns').style.display='flex';
+  renderKPIs(); applyFilter(); renderTable(); renderResumo(); setView(S.view);
+}
+function setView(v){
+  S.view=v;
+  document.querySelectorAll('.vbtn').forEach(function(b){ b.classList.toggle('active',b.getAttribute('data-view')===v); });
+  document.getElementById('listpanel').style.display=v==='lista'?'block':'none';
+  var rp=document.getElementById('respanel'); rp.className=v==='resumo'?'active':'';
+  document.getElementById('kpibar').style.display=v==='lista'||v==='resumo'?'flex':'none';
+}
+document.querySelectorAll('.vbtn').forEach(function(b){ b.addEventListener('click',function(){ setView(b.getAttribute('data-view')); }); });
+
+function renderKPIs(){
+  if(!S.ledger) return;
+  var es=Object.values(S.ledger).filter(function(e){ return e.gross>0||e.net_mp>0; });
+  var k={
+    total:es.length,
+    ok:es.filter(function(e){ return e.status==='ok'; }).length,
+    warns:es.filter(function(e){ return ['mediacao','cancelado','diff_centavos'].indexOf(e.status)>=0; }).length,
+    divs:es.filter(function(e){ return ['divergente','reclamacao'].indexOf(e.status)>=0; }).length,
+    gross:es.reduce(function(s,e){ return s+e.gross; },0),
+    exp_net:es.reduce(function(s,e){ return s+e.expected_net; },0),
+    net:es.reduce(function(s,e){ return s+e.net_mp; },0),
+    mkp:es.reduce(function(s,e){ return s+e.fee_mkp; },0),
+    rebate:es.reduce(function(s,e){ return s+e.rebate; },0),
+    delta:es.reduce(function(s,e){ return s+e.delta; },0),
+  };
+  document.getElementById('kpibar').innerHTML=[
+    ['Pedidos',k.total,'var(--w)'],
+    ['Conciliados',k.ok,'var(--g)'],
+    ['Alertas',k.warns,'var(--o)'],
+    ['Divergências',k.divs,'var(--r)'],
+    ['Bruto total',R(k.gross),'var(--y)'],
+    ['Líq. Esperado (ML)',R(k.exp_net),'var(--b)'],
+    ['Líq. Recebido (MP)',R(k.net),'var(--g)'],
+    ['Comissão total',R(k.mkp),'var(--r)'],
+    ['Rebates ocultos',R(k.rebate),'var(--t)'],
+    ['Δ Total',R(k.delta),Math.abs(k.delta)<0.02?'var(--g)':'var(--r)'],
+  ].map(function(d){
+    return '<div class="kpi"><div class="klbl">'+d[0]+'</div><div class="kval" style="color:'+d[2]+'">'+esc(d[1].toString())+'</div></div>';
+  }).join('');
+}
+
+function applyFilter(){
+  if(!S.ledger) return;
+  var es=Object.values(S.ledger), s=S.search.toLowerCase(), sf=S.sf;
+  S.filtered=es.filter(function(e){
+    if(sf&&e.status!==sf) return false;
+    if(s){ var hit=(e.order_id&&e.order_id.toLowerCase().indexOf(s)>=0)||(e.sku&&e.sku.toLowerCase().indexOf(s)>=0)||(e.produto&&e.produto.toLowerCase().indexOf(s)>=0)||(e.comprador&&e.comprador.toLowerCase().indexOf(s)>=0); if(!hit) return false; }
+    return true;
+  });
+  S.filtered.sort(function(a,b){
+    var av=a[S.sortCol], bv=b[S.sortCol];
+    if(av==null) return 1; if(bv==null) return -1;
+    var c=typeof av==='number'?av-bv:av.toString().localeCompare(bv.toString(),'pt-BR');
+    return S.sortDir==='asc'?c:-c;
+  });
+  var sel=document.getElementById('sflt'), cur=sel.value;
+  sel.innerHTML='<option value="">Todos ('+es.length+')</option>';
+  Object.keys(ST).forEach(function(k){
+    var n=es.filter(function(e){ return e.status===k; }).length;
+    if(n) sel.innerHTML+='<option value="'+k+'"'+(cur===k?' selected':'')+'>'+ST[k].l+' ('+n+')</option>';
+  });
+  document.getElementById('cntlbl').textContent=S.filtered.length+'/'+es.length;
+}
+
+document.getElementById('srch').addEventListener('input',function(){ S.search=this.value; applyFilter(); renderTable(); });
+document.getElementById('sflt').addEventListener('change',function(){ S.sf=this.value; applyFilter(); renderTable(); });
+
+function renderTable(){
+  var tb=document.getElementById('tbody');
+  if(!S.filtered.length){ tb.innerHTML='<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--m)">Nenhum resultado</td></tr>'; return; }
+  tb.innerHTML=S.filtered.map(function(e){
+    var prod=(e.produto||'—').slice(0,35);
+    var sku=(e.sku||'').slice(0,18);
+    var dcol=dc(e.delta);
+    var hasRebate=e.rebate!==0;
+    return '<tr data-id="'+esc(e.order_id)+'">'
+      +'<td style="font-family:var(--mono);color:var(--y);font-size:10px;white-space:nowrap">'+esc(e.order_id)+'</td>'
+      +'<td>'+badge(e.status,true)+'</td>'
+      +'<td class="cell-prod"><div class="prod-name">'+esc(prod)+'</div>'+(sku?'<div class="prod-sku">'+esc(sku)+'</div>':'')+'</td>'
+      +'<td class="r col-ml">'+(e.gross?R(e.gross):'—')+'</td>'
+      +'<td class="r col-ml s11">'+(e.fee_mkp?R(e.fee_mkp):'—')+'</td>'
+      +'<td class="r col-ml s11">'+((e.fee_ship+e.fee_fin)?R(e.fee_ship+e.fee_fin):'—')+'</td>'
+      +'<td class="r col-ml wt" style="color:var(--y)">'+(e.expected_net?R(e.expected_net):'—')+'</td>'
+      +'<td class="r col-mp wt" style="color:var(--g)">'+(e.net_mp?R(e.net_mp):'—')+'</td>'
+      +'<td class="r" style="color:var(--t);font-weight:'+(hasRebate?700:400)+'">'+(hasRebate?R(e.rebate):'—')+'</td>'
+      +'<td class="r" style="color:'+dcol+';font-weight:700">'+R(e.delta)+'</td>'
+      +'<td class="s9">'
+        +(e.lines_full.length?'<span class="xt xt-full">Full</span>':'')
+        +(e.lines_ml_fat.length?'<span class="xt xt-ml">Fat.ML</span>':'')
+        +(e.lines_mp_fat.length?'<span class="xt xt-mp">Fat.MP</span>':'')
+      +'</td>'
+      +'</tr>';
+  }).join('');
+  document.querySelectorAll('#tbody tr').forEach(function(tr){
+    tr.addEventListener('click',function(){
+      var id=tr.getAttribute('data-id');
+      if(S.ledger&&S.ledger[id]) openModal(S.ledger[id]);
+    });
+  });
+}
+
+document.querySelectorAll('#otbl th').forEach(function(th){
+  th.addEventListener('click',function(){
+    var col=th.getAttribute('data-col'); if(!col) return;
+    if(S.sortCol===col) S.sortDir=S.sortDir==='asc'?'desc':'asc'; else{S.sortCol=col;S.sortDir='asc';}
+    applyFilter(); renderTable();
+  });
+});
+
+// ── Pattern Detection ──────────────────────────────────────────────────────────
+function analyzeInsights(ledger){
+  var es=Object.values(ledger).filter(function(e){ return e.gross>0||e.net_mp>0; });
+  if(!es.length) return [];
+  var ins=[];
+
+  var negD=es.filter(function(e){ return e.delta<-0.02; });
+  if(negD.length>0&&negD.length>=es.length*0.15){
+    ins.push({sev:'error',
+      title:'MP creditou menos que o ML informa em '+negD.length+' pedidos ('+Math.round(negD.length/es.length*100)+'%)',
+      body:'Padrão sistemático: o settlement MP está creditando abaixo do "Total (BRL)" do ML Vendas. Verifique tarifas extras não declaradas ou rebates bloqueados.',
+      ids:negD.slice(0,6).map(function(e){ return e.order_id; })
+    });
+  }
+
+  var rates=es.filter(function(e){ return e.gross>0&&e.fee_mkp>0; }).map(function(e){ return e.fee_mkp/e.gross; });
+  if(rates.length>=3){
+    var avg=rates.reduce(function(s,r){ return s+r; },0)/rates.length;
+    var outliers=es.filter(function(e){ return e.gross>0&&e.fee_mkp>0&&Math.abs(e.fee_mkp/e.gross-avg)>0.04; });
+    if(outliers.length){
+      ins.push({sev:'warn',
+        title:outliers.length+' pedido'+(outliers.length>1?'s':'')+' com taxa de comissão fora do padrão',
+        body:'Taxa média detectada: '+(avg*100).toFixed(1)+'%. Desvio >4pp pode indicar categoria diferente ou tipo de anúncio incorreto (Clássico vs Premium).',
+        ids:outliers.slice(0,6).map(function(e){ return e.order_id; })
+      });
+    }
+  }
+
+  var noMP=es.filter(function(e){ return !e.has_mp_data&&e.has_ml_data; }).length;
+  if(noMP>0) ins.push({sev:'warn',
+    title:noMP+' pedido'+(noMP>1?'s':'')+' sem lançamento no settlement MP',
+    body:'Pedidos no ML Vendas sem settlement correspondente. Podem estar em processamento, aguardando liberação ou fora do período.'
+  });
+
+  var withRebate=es.filter(function(e){ return e.rebate>0; }).length;
+  var totalRebate=es.reduce(function(s,e){ return s+e.rebate; },0);
+  if(totalRebate>0) ins.push({sev:'info',
+    title:'Total '+R(totalRebate)+' em rebates/descontos em '+withRebate+' pedido'+(withRebate>1?'s':''),
+    body:'Descontos de campanha e cashback na coluna SALE_DETAIL do settlement. O MP oculta esses valores nos relatórios de faturamento — afetam o saldo real.'
+  });
+
+  var cancelPaid=es.filter(function(e){ return e.status==='cancelado'&&Math.abs(e.net_mp)>0.01; }).length;
+  if(cancelPaid>0) ins.push({sev:'warn',
+    title:cancelPaid+' pedido'+(cancelPaid>1?'s':'')+' cancelado'+(cancelPaid>1?'s':'')+' com saldo MP ≠ 0',
+    body:'Pedidos cancelados com saldo financeiro no MP. Verifique se houve estorno total ou parcial.'
+  });
+
+  var posD=es.filter(function(e){ return e.delta>0.02; });
+  if(posD.length>0&&posD.length>=es.length*0.15) ins.push({sev:'info',
+    title:'MP creditou mais que o ML informa em '+posD.length+' pedidos',
+    body:'O settlement MP mostra valores acima do "Total (BRL)" do ML Vendas. Pode indicar cashback de campanha ou desconto sobre tarifa não refletido no relatório ML.',
+    ids:posD.slice(0,6).map(function(e){ return e.order_id; })
+  });
+
+  return ins;
+}
+
+function renderResumo(){
+  if(!S.ledger) return;
+  var es=Object.values(S.ledger).filter(function(e){ return e.gross>0||e.net_mp>0; });
+  var total=es.length, html='';
+
+  var insights=analyzeInsights(S.ledger);
+  if(insights.length){
+    html+='<div class="panel"><div class="plbl">🔬 Análise inteligente — padrões detectados</div>';
+    insights.forEach(function(ins){
+      var sc=ins.sev==='error'?'var(--r)':ins.sev==='warn'?'var(--o)':'var(--b)';
+      html+='<div class="ins-card" style="border-color:'+sc+';background:'+sc+'0d;margin-bottom:10px">'
+        +'<div style="color:'+sc+';font-weight:700;font-size:11px;margin-bottom:5px">'+esc(ins.title)+'</div>'
+        +'<div style="color:var(--s);font-size:10px;line-height:1.5;margin-bottom:'+(ins.ids&&ins.ids.length?'6px':'0')+'">'+esc(ins.body)+'</div>';
+      if(ins.ids&&ins.ids.length){
+        html+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
+        ins.ids.forEach(function(id){
+          html+='<span style="background:var(--card);border:1px solid var(--bord);border-radius:3px;padding:1px 6px;font-size:8px;font-family:var(--mono);color:var(--y);cursor:pointer" onclick="if(S.ledger&&S.ledger[\''+esc(id)+'\'])openModal(S.ledger[\''+esc(id)+'\'])">'+esc(id.slice(-12))+'</span>';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  html+='<div class="panel"><div class="plbl">Status dos pedidos</div>';
+  Object.keys(ST).forEach(function(k){
+    var n=es.filter(function(e){ return e.status===k; }).length; if(!n) return;
+    var pct=total>0?(n/total)*100:0, col=ST[k].c;
+    html+='<div style="margin-bottom:9px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px"><span style="color:'+col+'">'+ST[k].l+'</span><span style="color:var(--s);font-family:var(--mono)">'+n+' · '+pct.toFixed(0)+'%</span></div>'
+      +'<div style="height:3px;background:var(--bord);border-radius:99px"><div style="height:3px;width:'+pct+'%;background:'+col+';border-radius:99px;transition:width .4s"></div></div></div>';
+  });
+  html+='</div>';
+
+  var gross=es.reduce(function(s,e){ return s+e.gross; },0);
+  var mkp=es.reduce(function(s,e){ return s+e.fee_mkp; },0);
+  var ship=es.reduce(function(s,e){ return s+e.fee_ship; },0);
+  var fin=es.reduce(function(s,e){ return s+e.fee_fin; },0);
+  var tax=es.reduce(function(s,e){ return s+e.fee_tax; },0);
+  var rebate=es.reduce(function(s,e){ return s+e.rebate; },0);
+  var exp_net=es.reduce(function(s,e){ return s+e.expected_net; },0);
+  var net=es.reduce(function(s,e){ return s+e.net_mp; },0);
+  var delta=net-exp_net;
+
+  html+='<div class="panel"><div class="plbl">Cascata financeira consolidada</div>';
+  [['+','Bruto total (TRANSACTION_AMOUNT)',gross,'var(--y)'],
+   ['-','Comissão ML (MKP_FEE)',mkp,'var(--r)'],
+   ['-','Frete (SHIPPING_FEE)',ship,'var(--o)'],
+   ['-','Parcelamento (FIN_FEE)',fin,'var(--o)'],
+   ['-','Impostos (TAXES)',tax,'var(--r)'],
+   ['+','Rebates ocultos (metadata)',rebate,'var(--t)'],
+   ['=','LÍQUIDO ESPERADO (ML Vendas)',exp_net,'var(--b)'],
+   ['≈','LÍQUIDO RECEBIDO (MP)',net,'var(--g)'],
+  ].forEach(function(r){
+    if(r[2]===0&&r[0]!=='='&&r[0]!=='≈') return;
+    var isTot=r[0]==='='||r[0]==='≈';
+    html+='<div style="display:flex;justify-content:space-between;padding:'+(isTot?'9':'6')+'px 10px;border-bottom:1px solid var(--bord);font-size:11px;'+(isTot?'font-weight:700;background:var(--card)':'')+'">'
+      +'<span><span style="color:'+r[3]+';font-family:var(--mono);margin-right:8px;width:12px;display:inline-block">'+r[0]+'</span><span style="color:var(--s)">'+esc(r[1])+'</span></span>'
+      +'<span style="color:'+r[3]+';font-family:var(--mono)">'+R(r[2])+'</span></div>';
+  });
+  var dcol=Math.abs(delta)<0.02?'var(--g)':delta<0?'var(--r)':'var(--o)';
+  html+='<div style="display:flex;justify-content:space-between;padding:10px;font-weight:700;font-size:12px;background:'+dcol+'10;border-top:2px solid '+dcol+'30"><span style="color:'+dcol+'">Δ  (MP recebido − ML esperado)</span><span style="color:'+dcol+';font-family:var(--mono)">'+R(delta)+'</span></div>';
+  html+='</div>';
+  document.getElementById('respanel').innerHTML=html;
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+var curEntry=null, curTab='conc';
+document.getElementById('mclose').addEventListener('click',function(){ document.getElementById('moverlay').classList.remove('open'); });
+document.getElementById('moverlay').addEventListener('click',function(ev){ if(ev.target===this) this.classList.remove('open'); });
+document.querySelectorAll('.mtab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.mtab').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active'); curTab=t.getAttribute('data-tab'); renderModalContent(curEntry,curTab);
+  });
+});
+
+function openModal(e){
+  if(!e) return;
+  curEntry=e; curTab='conc';
+  document.querySelectorAll('.mtab').forEach(function(t){ t.classList.remove('active'); });
+  var ft=document.querySelector('.mtab[data-tab="conc"]'); if(ft) ft.classList.add('active');
+  document.getElementById('mid').innerHTML=badge(e.status)+' <span style="color:var(--y);font-family:var(--mono);font-weight:700;font-size:13px">#'+esc(e.order_id)+'</span>';
+  var meta=[];
+  if(e.produto) meta.push('<span style="color:var(--w)">'+esc(e.produto.slice(0,55))+'</span>');
+  if(e.comprador) meta.push('<span style="color:var(--s)">'+esc(e.comprador)+'</span>');
+  if(e.sku) meta.push('<span style="color:var(--m);font-family:var(--mono)">'+esc(e.sku)+'</span>');
+  document.getElementById('mmeta').innerHTML=meta.join(' · ');
+  var fl=document.getElementById('mflags');
+  if(e.flags.length){
+    fl.style.display='flex';
+    fl.innerHTML=e.flags.map(function(f){ var fc=f.sev==='error'?'var(--r)':f.sev==='warn'?'var(--o)':'var(--b)'; return '<span style="background:'+fc+'18;color:'+fc+';border:1px solid '+fc+'44;border-radius:3px;padding:2px 8px;font-size:9px;font-family:var(--mono)">'+esc(f.msg)+'</span>'; }).join('');
+  } else fl.style.display='none';
+  document.getElementById('mkpis').innerHTML=[
+    ['Bruto',R(e.gross),'var(--y)'],
+    ['Esperado (ML)',R(e.expected_net),'var(--b)'],
+    ['Recebido (MP)',R(e.net_mp),'var(--g)'],
+    ['Δ',R(e.delta),dc(e.delta)],
+  ].map(function(k){ return '<div class="mkpi"><div class="mklbl">'+k[0]+'</div><div class="mkval" style="color:'+k[2]+'">'+k[1]+'</div></div>'; }).join('');
+  renderModalContent(e,'conc');
+  document.getElementById('moverlay').classList.add('open');
+}
+
+function wfLine(op,lbl,amt,cv,bal,pct){
+  var col='var(--'+cv+')';
+  var balH=bal!==null?'<span class="wf-bal">→ '+R(bal)+'</span>':'';
+  var pctH=pct?'<span class="wf-pct">('+pct+')</span>':'';
+  return '<div class="wf-line"><span class="wf-lop" style="color:'+col+'">'+op+'</span>'
+    +'<span class="wf-llbl">'+esc(lbl)+pctH+'</span>'
+    +'<span class="wf-lamt" style="color:'+col+'">'+(op==='-'?'−':'')+R(Math.abs(amt))+'</span>'+balH+'</div>';
+}
+function wfTotal(lbl,amt,cv){
+  var col='var(--'+cv+')';
+  return '<div class="wf-total"><span class="wf-lop" style="color:'+col+'">=</span>'
+    +'<span class="wf-llbl wt" style="color:'+col+'">'+esc(lbl)+'</span>'
+    +'<span class="wf-lamt wt" style="color:'+col+'">'+R(amt)+'</span></div>';
+}
+function secHdr(icon,lbl,cv){
+  return '<div class="sec-hdr" style="border-left-color:var(--'+cv+')"><span class="sec-icon">'+icon+'</span><span style="color:var(--'+cv+')">'+esc(lbl)+'</span></div>';
+}
+function irow(k,v){ if(v===null||v===undefined||v===''||v==='null'||v==='undefined') return ''; return '<div class="irow"><span class="ik">'+k+'</span><span class="iv">'+v+'</span></div>'; }
+
+function renderModalContent(e,tab){
+  if(!e) return;
+  var cont=document.getElementById('mcont'), html='';
+  var bindExpand=function(){
+    cont.querySelectorAll('.lhead').forEach(function(hd){
+      hd.addEventListener('click',function(){
+        var det=hd.nextElementSibling;
+        if(det&&det.classList.contains('ldet')){ var op=det.style.display==='block'; det.style.display=op?'none':'block'; var car=hd.querySelector('.lcaret'); if(car) car.textContent=op?'▼':'▲'; }
+      });
+    });
+  };
+
+  if(tab==='conc'){
+    // 1. ESPERADO (ML Vendas)
+    html+=secHdr('📋','ESPERADO — Relatório ML Vendas','b');
+    html+='<div class="sec-body">';
+    if(e.has_ml_data){
+      var lv=e.lines_ml_vendas[0];
+      var expG=lv.gross, expFtv=Math.abs(lv.tarifa_venda), expFs=Math.abs(lv.frete_tar);
+      var expDisc=lv.descontos, expN=lv.total;
+      html+=wfLine('+','Receita bruta (produto)',expG,'y',null,null);
+      if(expFtv) html+=wfLine('-','Tarifa ML + impostos',expFtv,'r',null,expG>0?(expFtv/expG*100).toFixed(1)+'%':null);
+      if(expFs) html+=wfLine('-','Tarifa de frete (ML)',expFs,'o',null,null);
+      if(expDisc&&Math.abs(expDisc)>0.001) html+=wfLine(expDisc>0?'-':'+','Descontos / bônus',Math.abs(expDisc),'t',null,null);
+      html+=wfTotal('Líquido esperado (ML Vendas)',expN,'b');
+    } else {
+      html+='<div style="color:var(--m);font-size:10px;padding:6px 4px;margin-bottom:4px">Relatório ML Vendas não carregado — usando cálculo do settlement.</div>';
+      html+=wfLine('+','Bruto (TRANSACTION_AMOUNT)',e.gross,'y',null,null);
+      if(e.fee_mkp) html+=wfLine('-','Comissão ML (MKP_FEE)',e.fee_mkp,'r',null,e.gross>0?(e.fee_mkp/e.gross*100).toFixed(1)+'%':null);
+      if(e.fee_ship) html+=wfLine('-','Frete (SHIPPING_FEE)',e.fee_ship,'o',null,null);
+      if(e.fee_fin) html+=wfLine('-','Parcelamento (FIN_FEE)',e.fee_fin,'o',null,null);
+      if(e.fee_tax) html+=wfLine('-','Impostos (TAXES)',e.fee_tax,'r',null,null);
+      if(e.rebate) html+=wfLine('+','Rebates',e.rebate,'t',null,null);
+      html+=wfTotal('Líquido esperado (calculado)',e.gross-e.total_fees+e.rebate,'b');
+    }
+    html+='</div>';
+
+    // 2. REAL — MP settlement with running balance
+    html+=secHdr('💳','REAL — Movimentações MP (Settlement)','g');
+    html+='<div class="sec-body">';
+    if(!e.lines_settlement.length){
+      html+='<div style="color:var(--m);font-size:10px;padding:8px 4px">Nenhum lançamento de settlement carregado para este pedido.</div>';
+    } else {
+      var running=0;
+      e.lines_settlement.forEach(function(l){
+        var lt=(l.type||'').toUpperCase();
+        var ltcol=lt==='SETTLEMENT'?'g':lt==='REFUND'||lt==='CHARGEBACK'?'r':lt==='CASHBACK'?'t':'s';
+        html+='<div class="mp-event">';
+        html+='<div class="mp-event-hdr" style="color:var(--'+ltcol+')">'
+          +'<span class="mp-ev-type">'+esc(lt)+'</span>'
+          +(l.date?'<span class="mp-ev-date">'+esc(l.date)+'</span>':'')
+          +(l.release&&l.release!==l.date?'<span class="mp-ev-rel">libera: '+esc(l.release)+'</span>':'')
+          +(l.source_id?'<span class="mp-ev-src">src …'+esc(l.source_id.toString().slice(-8))+'</span>':'')
+          +(l.parcelas?'<span class="mp-ev-src">parc. '+esc(l.parcelas)+'</span>':'')
+          +'</div>';
+        if(l.gross&&l.gross!==0){ running+=l.gross; html+=wfLine(l.gross>0?'+':'-','Bruto (TRANSACTION_AMOUNT)',l.gross,l.gross>0?'g':'r',running,null); }
+        if(l.mkp&&l.mkp!==0){ running+=l.mkp; html+=wfLine(l.mkp<0?'-':'+','Comissão ML (MKP_FEE)',l.mkp,'r',running,l.gross?( Math.abs(l.mkp)/Math.abs(l.gross)*100).toFixed(1)+'%':null); }
+        if(l.ship&&l.ship!==0){ running+=l.ship; html+=wfLine(l.ship<0?'-':'+','Frete (SHIPPING_FEE)',l.ship,'o',running,null); }
+        if(l.fin&&l.fin!==0){ running+=l.fin; html+=wfLine(l.fin<0?'-':'+','Parcelamento (FIN_FEE)',l.fin,'o',running,null); }
+        if(l.tax&&l.tax!==0){ running+=l.tax; html+=wfLine(l.tax<0?'-':'+','Impostos (TAXES)',l.tax,'r',running,null); }
+        if(l.coupon&&l.coupon!==0){ running-=Math.abs(l.coupon); html+=wfLine('-','Cupom (COUPON)',Math.abs(l.coupon),'t',running,null); }
+        if(l._extrato) html+='<div class="extrato-tag">💰 Liberado · '+esc(l._extrato.date)+'  '+R(l._extrato.net)+'</div>';
+        html+='</div>';
+      });
+    }
+    html+=wfTotal('Saldo MP recebido (Σ SETTLEMENT_NET)',e.net_mp,'g');
+    html+='</div>';
+
+    // 3. REBATES OCULTOS (SALE_DETAIL metadata)
+    if(e.rebate_items.length){
+      html+=secHdr('🔑','REBATES / DESCONTOS OCULTOS (metadata)','t');
+      html+='<div class="sec-body">';
+      e.rebate_items.forEach(function(rb){ html+=wfLine(rb.value>=0?'+':'-',esc(rb.key),rb.value,'t',null,null); });
+      html+=wfTotal('Total rebates/descontos',e.rebate,'t');
+      html+='</div>';
+    }
+
+    // 4. FEE AUDIT
+    if(e.gross>0&&(e.fee_mkp>0||e.lines_ml_fat.length)){
+      html+=secHdr('🔍','CONFERÊNCIA DE TARIFAS','o');
+      html+='<div class="sec-body"><div class="itbl">';
+      var rmp=e.gross>0?(e.fee_mkp/e.gross):0;
+      html+=irow('Comissão cobrada (MP)',R(e.fee_mkp)+(rmp?' = '+(rmp*100).toFixed(2)+'%':''));
+      if(e.has_ml_data){
+        var rml=e.lines_ml_vendas[0].gross>0?(Math.abs(e.lines_ml_vendas[0].tarifa_venda)/e.lines_ml_vendas[0].gross):0;
+        html+=irow('Comissão esperada (ML)',R(Math.abs(e.lines_ml_vendas[0].tarifa_venda))+(rml?' = '+(rml*100).toFixed(2)+'%':''));
+        var cdiff=e.fee_mkp-Math.abs(e.lines_ml_vendas[0].tarifa_venda);
+        if(Math.abs(cdiff)>0.001) html+=irow('Diferença','<span style="color:'+(Math.abs(cdiff)>0.02?'var(--r)':'var(--t)')+'">'+R(cdiff)+(Math.abs(cdiff)>0.02?' ← verificar':'')+'</span>');
+        var sdiff=e.fee_ship-Math.abs(e.lines_ml_vendas[0].frete_tar);
+        if(Math.abs(sdiff)>0.02) html+=irow('Diferença frete','<span style="color:var(--r)">'+R(sdiff)+' ← verificar</span>');
+      }
+      html+=irow('Frete cobrado (MP)',R(e.fee_ship));
+      if(e.fee_fin) html+=irow('Parcelamento (MP)',R(e.fee_fin));
+      if(e.fee_tax) html+=irow('Impostos (MP)',R(e.fee_tax));
+      html+=irow('Total tarifas (MP)',R(e.total_fees));
+      html+='</div>';
+      if(e.lines_ml_fat.length){
+        html+='<div style="color:var(--m);font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">Faturamento ML — decomposição</div><div class="itbl">';
+        e.lines_ml_fat.forEach(function(l){
+          var isc=l.valor<0||(l.detalhe&&(l.detalhe.indexOf('Bonificação')>=0||l.detalhe.indexOf('storno')>=0));
+          html+=irow(esc(l.detalhe||'—'),'<span style="color:'+(isc?'var(--g)':'var(--r)')+'">'+R(l.valor)+'</span>');
+        });
+        html+='</div>';
+      }
+      if(e.lines_mp_fat.length){
+        html+='<div style="color:var(--m);font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">Faturamento MP</div><div class="itbl">';
+        e.lines_mp_fat.forEach(function(l){ html+=irow(esc(l.detalhe||'—'),'<span style="color:var(--r)">'+R(l.valor)+'</span>'); });
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+
+    // 5. Full / ADS
+    if(e.lines_full.length){
+      html+=secHdr('📦','FULL / ADS — Custos de plataforma','p');
+      html+='<div class="sec-body">';
+      var totFull=0;
+      e.lines_full.forEach(function(l){
+        totFull+=l.valor;
+        html+='<div class="itbl" style="margin-bottom:4px">'+irow(esc(l.detalhe||'Full')+(l.date?'<br><span style="color:var(--m);font-size:8px">'+esc(l.date)+'</span>':''),'<span style="color:var(--p)">'+R(l.valor)+'</span>')+'</div>';
+      });
+      html+=wfTotal('Total Full/ADS',totFull,'p');
+      html+='</div>';
+    }
+
+    // 6. RESULTADO FINAL
+    html+=secHdr('⚖','RESULTADO FINAL','w');
+    var dcF=Math.abs(e.delta)<0.02?'g':e.delta<0?'r':'y';
+    html+='<div class="resultado-box">';
+    html+='<div class="res-row"><span class="res-lbl" style="color:var(--b)">Saldo que DEVERIA ser '+(e.has_ml_data?'(ML Vendas)':'(calculado)')+'</span><span class="res-val" style="color:var(--b)">'+R(e.expected_net)+'</span></div>';
+    html+='<div class="res-row"><span class="res-lbl" style="color:var(--g)">Saldo que É (MP recebido)</span><span class="res-val" style="color:var(--g)">'+R(e.net_mp)+'</span></div>';
+    html+='<div class="res-row res-delta" style="border-color:var(--'+dcF+')50;background:var(--'+dcF+')0d"><span class="res-lbl" style="color:var(--'+dcF+')">'+(Math.abs(e.delta)<0.02?'✓ CONCILIADO':'⚠ DIVERGÊNCIA')+' (Δ)</span><span class="res-val res-big" style="color:var(--'+dcF+')">'+R(e.delta)+'</span></div>';
+    if(Math.abs(e.delta)>=0.02){
+      var rmsg=e.delta<0
+        ?'O MP creditou '+R(Math.abs(e.delta))+' a MENOS. Verifique tarifas extras, rebates bloqueados ou descontos não declarados.'
+        :'O MP creditou '+R(e.delta)+' a MAIS. Pode ser cashback de campanha ou desconto sobre tarifa não refletido no relatório ML.';
+      html+='<div style="padding:9px 14px;font-size:10px;color:var(--s);line-height:1.5;border-top:1px solid var(--bord)">'+esc(rmsg)+'</div>';
+    }
+    html+='</div>';
+    cont.innerHTML=html;
+    bindExpand();
+  }
+
+  else if(tab==='mov'){
+    html+='<div class="stitle">Settlement — Dinheiro em conta</div>';
+    if(!e.lines_settlement.length) html+='<div style="color:var(--m);font-size:10px">Nenhum lançamento de settlement carregado.</div>';
+    else e.lines_settlement.forEach(function(l){
+      var isPos=l.type==='SETTLEMENT'||l.type==='CASHBACK'; var col=isPos?'var(--g)':'var(--r)';
+      html+='<div class="litem"><div class="lhead">'
+        +'<div class="ldot" style="background:'+col+'20;border:1px solid '+col+'44;color:'+col+'">'+(isPos?'↓':'↑')+'</div>'
+        +'<div class="lbody"><div class="ltop"><span class="lname" style="color:'+col+'">'+esc(l.type)+'</span><span class="lamt" style="color:'+col+'">'+R(isPos?l.net:l.gross)+'</span></div>'
+        +'<div class="ldate">'+esc(l.date)+'  Lib: '+esc(l.release)+'</div>'
+        +'<div class="ltags">'+(l.source_id?'<span class="ltag">SRC …'+esc(l.source_id.toString().slice(-10))+'</span>':'')+(l.sku?'<span class="ltag">SKU: '+esc(l.sku)+'</span>':'')+(l.parcelas?'<span class="ltag">Parc. '+esc(l.parcelas)+'</span>':'')
+        +'</div></div><span class="lcaret">▼</span></div>'
+        +'<div class="ldet"><div class="itbl">'
+        +irow('Bruto (TRANSACTION_AMOUNT)',R(l.gross))
+        +irow('Líquido (SETTLEMENT_NET_AMOUNT)',R(l.net))
+        +irow('Tarifa total (FEE_AMOUNT)',R(l.fee))
+        +(l.mkp?irow('Comissão ML (MKP_FEE)',R(l.mkp)):'')
+        +(l.ship?irow('Frete (SHIPPING_FEE)',R(l.ship)):'')
+        +(l.fin?irow('Parcelamento (FIN_FEE)',R(l.fin)):'')
+        +(l.tax?irow('Impostos (TAXES)',R(l.tax)):'')
+        +(l.coupon?irow('Cupom',R(l.coupon)):'')
+        +(l.produto?irow('SALE_DETAIL',esc(l.produto.toString().slice(0,100))):'')
+        +'</div></div></div>';
+    });
+    if(e.lines_mp_vendas.length){
+      html+='<div class="stitle">MP Vendas extraídas</div>';
+      e.lines_mp_vendas.forEach(function(l){
+        html+='<div style="background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:10px;margin-bottom:6px;font-size:10px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--b);font-weight:700">'+esc(l['Status da operação (status)']||'')+'</span><span style="color:var(--g);font-family:var(--mono);font-weight:700">'+R(pa(l['Valor total recebido (net_received_amount)']))+'</span></div><div class="itbl">'
+          +irow('Bruto',R(pa(l['Valor do produto (transaction_amount)'])))
+          +irow('Tarifa MP',R(pa(l['Tarifa do Mercado Pago (mercadopago_fee)'])))
+          +irow('Comissão plataforma',R(pa(l['Tarifa pelo uso da plataforma de terceiros (marketplace_fee)'])))
+          +irow('Frete',R(pa(l['Frete (shipping_cost)'])))
+          +irow('Parcelamento',R(pa(l['Custos de parcelamento (financing_fee)'])))
+          +irow('Parcelas',esc(l['Parcelas (installments)']))+irow('Pagamento',esc(l['Meio de pagamento (payment_type)']))
+          +'</div></div>';
+      });
+    }
+    if(e.rebate_items.length){
+      html+='<div class="stitle">Rebates / Cashback</div><div class="itbl">';
+      e.rebate_items.forEach(function(rb){ html+=irow(esc(rb.key),'<span style="color:var(--t);font-weight:700">'+R(rb.value)+'</span>'); });
+      html+=irow('Total',R(e.rebate));
+      html+='</div>';
+    }
+    cont.innerHTML=html; bindExpand();
+  }
+
+  else if(tab==='ml'){
+    if(e.lines_ml_vendas.length){
+      html+='<div class="stitle">ML Vendas — Relatório de Pedidos</div>';
+      e.lines_ml_vendas.forEach(function(l){
+        html+='<div class="litem"><div class="lhead">'
+          +'<div class="ldot" style="background:var(--y)20;border:1px solid var(--y)44;color:var(--y)">🛒</div>'
+          +'<div class="lbody"><div class="ltop"><span class="lname" style="color:var(--y)">'+esc(l.status)+'</span><span class="lamt" style="color:var(--y)">'+R(l.gross)+'</span></div>'
+          +'<div class="ldate">'+esc(l.date)+'</div>'
+          +'<div class="ltags">'+(l.tipo?'<span class="ltag">'+esc(l.tipo)+'</span>':'')+(l.publicidade==='Sim'?'<span class="ltag" style="color:var(--p)">Ads</span>':'')+(l.reclamacao==='Sim'?'<span class="ltag" style="color:var(--r)">Reclamação</span>':'')
+          +'</div></div><span class="lcaret">▼</span></div>'
+          +'<div class="ldet"><div class="itbl">'
+          +irow('Receita bruta (produto)',R(l.gross))
+          +irow('Tarifa venda + impostos',R(l.tarifa_venda))
+          +irow('Receita por envio',R(l.frete_rec))
+          +irow('Tarifa de envio',R(l.frete_tar))
+          +irow('Descontos e bônus',R(l.descontos))
+          +irow('<b>Total (BRL)</b>','<b>'+R(l.total)+'</b>')
+          +irow('Comprador',esc(l.comprador))+irow('CEP',esc(l.cep))+irow('Unidades',esc(l.unidades))
+          +'</div></div></div>';
+      });
+    }
+    if(e.lines_ml_fat.length){
+      html+='<div class="stitle">ML Faturamento</div>';
+      e.lines_ml_fat.forEach(function(l){
+        var isc=l.valor<0||(l.detalhe&&(l.detalhe.indexOf('Bonificação')>=0||l.detalhe.indexOf('storno')>=0));
+        var col=isc?'var(--g)':'var(--r)';
+        html+='<div style="background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:10px;margin-bottom:6px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:'+col+';font-weight:700;font-size:11px">'+esc(l.detalhe)+'</span><span style="color:'+col+';font-family:var(--mono);font-weight:700">'+R(l.valor)+'</span></div>'
+          +'<div class="itbl">'+irow('Data',esc(l.date))+irow('NF-e',esc(l.nfe))+irow('Tarifa',esc(l.tarifa_id))+irow('Descontado',esc(l.descontado))+(l.desconto?irow('Desconto comercial',R(l.desconto)):'')+'</div></div>';
+      });
+    }
+    if(!e.lines_ml_vendas.length&&!e.lines_ml_fat.length) html+='<div style="color:var(--m);font-size:11px;padding:20px;text-align:center">Nenhum dado ML carregado para este pedido.</div>';
+    cont.innerHTML=html; bindExpand();
+  }
+
+  else if(tab==='full'){
+    html+='<div class="stitle">Custos Full (armazenagem / coleta)</div>';
+    if(!e.lines_full.length) html+='<div style="color:var(--m);font-size:11px">Nenhum custo Full para este pedido/SKU.</div>';
+    else{
+      var totF=0;
+      e.lines_full.forEach(function(l){
+        totF+=l.valor;
+        html+='<div style="background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:10px;margin-bottom:6px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--p);font-weight:700;font-size:11px">'+esc(l.detalhe)+'</span><span style="color:var(--p);font-family:var(--mono);font-weight:700">'+R(l.valor)+'</span></div>'
+          +'<div class="itbl">'+irow('Data',esc(l.date))+irow('NF-e',esc(l.nfe))+irow('SKU',esc(l.sku))+irow('Anúncio',esc(l.anuncio))+'</div></div>';
+      });
+      html+='<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(144,96,240,.08);border:1px solid rgba(144,96,240,.3);border-radius:6px;font-weight:700"><span>Total Full</span><span style="color:var(--p);font-family:var(--mono)">'+R(totF)+'</span></div>';
+    }
+    if(e.lines_mp_fat.length){
+      html+='<div class="stitle">MP Faturamento</div>';
+      e.lines_mp_fat.forEach(function(l){
+        html+='<div style="background:var(--card);border:1px solid var(--bord);border-radius:6px;padding:10px;margin-bottom:6px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--r);font-weight:700;font-size:11px">'+esc(l.detalhe)+'</span><span style="color:var(--r);font-family:var(--mono);font-weight:700">'+R(l.valor)+'</span></div>'
+          +'<div class="itbl">'+irow('Data',esc(l.date))+irow('NF-e',esc(l.nfe))+irow('N.º Movimento',esc(l.movimento_id))+irow('Tipo op.',esc(l.tipo_op))+irow('Valor da op.',R(l.valor_op))+'</div></div>';
+      });
+    }
+    cont.innerHTML=html;
+  }
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+document.getElementById('btnexp').addEventListener('click',function(){
+  if(!S.filtered.length) return;
+  var cols=['order_id','status','gross','expected_net','net_mp','delta','fee_mkp','fee_ship','fee_fin','fee_tax','rebate','sku','produto','comprador'];
+  var rows=[cols.join(';')];
+  S.filtered.forEach(function(e){
+    rows.push(cols.map(function(c){
+      var v=e[c]; if(v==null) return '';
+      if(typeof v==='number') return v.toFixed(2).replace('.',',');
+      return '"'+v.toString().replace(/"/g,'""')+'"';
+    }).join(';'));
+  });
+  var blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='conciliacao_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+});
+
+updateRunBtn();
+</script>
+</body>
+</html>
